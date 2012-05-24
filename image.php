@@ -451,5 +451,134 @@ class Image {
 
 		return $coords;
 	}
+	
+	
+	
+	/**
+	 * Writes on image
+	 *
+	 * @param integer $x X-coordinate, string: 'center', 'left', 'right'
+	 * @param integer $y Y-coordinate
+	 * @param integer $boxWidth the width of the box for text
+	 * @param integer $boxHeight the height of the box for text
+	 * @param string $text Text
+	 * @param array $params Text
+	  		'font' => string, path to font
+			'startFontSize' => integer, font size for starting. If text wouldn't fit the height, then font size will be decreased
+			'stepFontSize' => integer, step for font size decreasing
+			'angle' => font angle
+			'color' => conf color
+			'lineSpacing' => integer, spacing between lines
+			'padding' => string in format: '20 10', where first - padding for top and bottom, and second - for left and right
+	 * @acces public
+	 */
+	public function writeMultiline($x, $y, $boxWidth = null, $boxHeight = null, $text, $params = array())
+	{
+		$config = array(
+			'font' => ( isset($params['font']) ? $params['font'] : null ),
+			'startFontSize' => ( isset($params['startFontSize']) ? $params['startFontSize'] : 12 ),
+			'stepFontSize' => ( isset($params['stepFontSize']) ? $params['stepFontSize'] : 1 ),
+			'angle' => ( isset($params['angle']) ? $params['angle'] : null ),
+			'color' => ( isset($params['color']) ? $params['color'] : '#000000' ),
+			'lineSpacing' => ( isset($params['lineSpacing']) ? $params['lineSpacing'] : null ),
+			'padding' => ( isset($params['padding']) ? $params['padding'] : '0 0' ),
+		);
+		
+		// parsing padding
+			$padding = array();
+			$config['padding'] = str_replace('px','',$config['padding']);
+			if (strstr($config['padding'],' '))
+				list($padding['top_bottom'],$padding['left_right']) = explode(' ',$config['padding']);
+			else
+			{
+				$padding['top_bottom'] = $config['padding'];
+				$padding['left_right'] = $config['padding'];
+			}
+		
+		// if lineSpacing not defined
+			if (is_null($config['lineSpacing']))
+			{
+				$config['lineSpacing'] = ceil($config['startFontSize']/10);
+			}
+		
+		// box width with padding
+			$boxWidth = !is_null($boxWidth) ? $boxWidth : $this->width;
+			$boxWidth = $boxWidth - $padding['left_right']*2;
+			
+		// box height with padding
+			$boxHeight = !is_null($boxHeight) ? $boxHeight : $this->height;
+			$boxHeight = $boxHeight - $padding['top_bottom']*2;
+		
+		$words = explode(' ',$text);
+		$forever = true;
+		
+		while($forever)
+		{
+			$lines = array();
+			$i = 0;
+			$line_length = 0;
+			$lines_height = 0;
+			foreach($words as $word)
+			{
+				if (!isset($lines[$i]['string']))
+				{
+					$lines[$i]['string'] = '';
+					$lines[$i]['words'] = array();
+					$lines[$i]['width'] = 0;
+					$lines[$i]['height'] = 0;
+				}
+				
+				$word = $word.' ';
+				
+				$inf = $this->getTextSize($config['font'], $config['startFontSize'], $config['angle'], $lines[$i]['string'].$word);
+				
+				if ($inf['width'] > $boxWidth)
+				{
+					$lines[$i]['fontSize'] = $config['startFontSize'];
+					$lines[$i]['width'] = $inf['width'];
+					$lines[$i]['height'] = $inf['height'];
+					
+					$lines_height += $inf['height'] + $config['lineSpacing'];
+					$i++;
+				}
+				
+				
+					
+				if (!isset($lines[$i]['string']))
+				{
+					$lines[$i]['string'] = '';
+					$lines[$i]['words'] = array();
+					$lines[$i]['width'] = 0;
+					$lines[$i]['height'] = 0;
+				}
+					
+				$lines[$i]['words'][] = $word;
+				
+				$lines[$i]['string'] .= $word;
+			}
+			
+			$lines[$i]['fontSize'] = $config['startFontSize'];
+			$lines[$i]['width'] = $inf['width'];
+			$lines[$i]['height'] = $inf['height'];
+			
+			// decreasing font size
+			if ($lines_height > $boxHeight)
+			{
+				$config['startFontSize'] -= $config['stepFontSize'];
+				continue;
+			}
+			else
+				break;
+
+		}
+		
+		// start real writing to image
+			$startY = $y;
+			foreach($lines as $line)
+			{
+				$this->write($x, $startY, $config['font'], $line['fontSize'], $config['angle'], $config['color'], $line['string']);
+				$startY += $line['height'];
+			}
+	}
 }
 ?>
