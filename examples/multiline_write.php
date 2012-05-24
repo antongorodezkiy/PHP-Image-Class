@@ -20,9 +20,13 @@
                 'lineSpacing' => null,  // if not definedm then will be startFontSize/10
                 'padding' => '20 10',   // almost in css format :), acceptable two or one parameters
         );
-        $boxWidth = null; // will be fetched from the $a->width
-        $boxHeight = 300;
-            $this->image->writeMultiline('center', 240, $boxWidth, $boxHeight, $large_string, $config);
+        $box_config = array(
+			'top' => 300,
+			'left' => 0,
+			'width' => null, // may be null, in this case will used $a->width
+			'height' => 300 // may be null, in this case will used $a->height
+		);
+        $this->image->writeMultiline($large_string, $box_config, $config);
     
     $a->show(); // Show image
 ?>
