@@ -279,42 +279,43 @@ class Image {
 	/**
 	 * Writes on image
 	 *
-	 * @param integer $x X-coordinate, string: 'center', 'left', 'right'
+	 * @param integer $x X-coordinate
 	 * @param integer $y Y-coordinate
 	 * @param string $font Path to ttf
 	 * @param integer $size Font size
 	 * @param integer $angle in degree
 	 * @param string $color Color in hexadecimal code
 	 * @param string $text Text
+	 * @param string $textAlign align of text: left, right, center
+	 * @param integer $boxWidth, equal to $this->width by default
+	 * @param integer $boxHeight, equal to $this->height by default
 	 * @acces public
 	 */
-	function write($x, $y, $font, $size, $angle, $color, $text) {
+	function write($x, $y, $font, $size, $angle, $color, $text, $textAlign = 'left', $boxWidth = null, $boxHeight = null) {
 		
-		if (!is_numeric($x))
+		$boxWidth = !is_null($boxWidth) ? $boxWidth : $this->width;
+		$boxHeight = !is_null($boxHeight) ? $boxHeight : $this->height;
+		
+		$text_coord = $this->getTextSize($font, $size, $angle, $text);
+		
+		switch($textAlign)
 		{
-			$text_coord = $this->getTextSize($font, $size, $angle, $text);
-			
-			switch($x)
-			{
-				case 'left':
-					$x = 0;
-				break;
-			
-				case 'right':
-					$x = $this->width - $text_coord['width'];
-				break;
-			
-				case 'center':
-					$x = round( ($this->width-$text_coord['width']) /2);
-				break;
-			}
+			case 'right':
+				$new_x = $x + $boxWidth - $text_coord['width'];
+			break;
+		
+			case 'center':
+				$new_x = $x + round( ($boxWidth-$text_coord['width']) /2);
+			break;
 
 		}
 		
+		
 		$rgb = $this->hex2rgb($color);
 		$color = imagecolorallocate($this->image, $rgb['r'], $rgb['g'], $rgb['b']);
-		imagettftext($this->image, $size, $angle, $x, $y, $color, $font, $text);
+		return imagettftext($this->image, $size, $angle, $new_x, $y, $color, $font, $text);
 	}
+	
 
 	/**
 	 * Merges image with another
@@ -457,12 +458,13 @@ class Image {
 	/**
 	 * Writes on image
 	 *
-	 * @param integer $x X-coordinate, string: 'center', 'left', 'right'
-	 * @param integer $y Y-coordinate
-	 * @param integer $boxWidth the width of the box for text
-	 * @param integer $boxHeight the height of the box for text
 	 * @param string $text Text
-	 * @param array $params Text
+	 * @param array $boxParams Text
+	  		'left' => integer, X-coordinate
+	  		'top' => integer, Y-coordinate
+	  		'width' => integer, width of the box with text
+	  		'height' => integer, height of the box with text
+	 * @param array $params
 	  		'font' => string, path to font
 			'startFontSize' => integer, font size for starting. If text wouldn't fit the height, then font size will be decreased
 			'stepFontSize' => integer, step for font size decreasing
@@ -470,9 +472,10 @@ class Image {
 			'color' => conf color
 			'lineSpacing' => integer, spacing between lines
 			'padding' => string in format: '20 10', where first - padding for top and bottom, and second - for left and right
+			'text-align' => string, align of text - left, right, center
 	 * @acces public
 	 */
-	public function writeMultiline($x, $y, $boxWidth = null, $boxHeight = null, $text, $params = array())
+	public function writeMultiline($text, $boxParams = array(), $params = array())
 	{
 		$config = array(
 			'font' => ( isset($params['font']) ? $params['font'] : null ),
@@ -482,6 +485,14 @@ class Image {
 			'color' => ( isset($params['color']) ? $params['color'] : '#000000' ),
 			'lineSpacing' => ( isset($params['lineSpacing']) ? $params['lineSpacing'] : null ),
 			'padding' => ( isset($params['padding']) ? $params['padding'] : '0 0' ),
+			'text-align' => ( isset($params['text-align']) ? $params['text-align'] : 'left' )
+		);
+		
+		$boxConfig = array(
+			'left' => ( isset($boxParams['left']) ? $boxParams['left'] : 0 ),
+			'top' => ( isset($boxParams['top']) ? $boxParams['top'] : 0 ),
+			'width' => ( isset($boxParams['width']) ? $boxParams['width'] : 0 ),
+			'height' => ( isset($boxParams['height']) ? $boxParams['height'] : 0 ),
 		);
 		
 		// parsing padding
@@ -502,12 +513,12 @@ class Image {
 			}
 		
 		// box width with padding
-			$boxWidth = !is_null($boxWidth) ? $boxWidth : $this->width;
-			$boxWidth = $boxWidth - $padding['left_right']*2;
+			$boxWidth = !is_null($boxConfig['width']) ? $boxConfig['width'] : $this->width;
+			$boxWidth = $boxConfig['width'] - $padding['left_right']*2;
 			
 		// box height with padding
-			$boxHeight = !is_null($boxHeight) ? $boxHeight : $this->height;
-			$boxHeight = $boxHeight - $padding['top_bottom']*2;
+			$boxHeight = !is_null($boxConfig['height']) ? $boxConfig['height'] : $this->height;
+			$boxHeight = $boxConfig['height'] - $padding['top_bottom']*2;
 		
 		$words = explode(' ',$text);
 		$forever = true;
@@ -542,7 +553,6 @@ class Image {
 					$i++;
 				}
 				
-				
 					
 				if (!isset($lines[$i]['string']))
 				{
@@ -573,10 +583,10 @@ class Image {
 		}
 		
 		// start real writing to image
-			$startY = $y;
+			$startY = $boxConfig['top'];
 			foreach($lines as $line)
 			{
-				$this->write($x, $startY, $config['font'], $line['fontSize'], $config['angle'], $config['color'], $line['string']);
+				$this->write($boxConfig['left'], $startY, $config['font'], $line['fontSize'], $config['angle'], $config['color'], $line['string'], $config['text-align'], $boxWidth, $boxHeight);
 				$startY += $line['height'];
 			}
 	}
