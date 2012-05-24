@@ -279,7 +279,7 @@ class Image {
 	/**
 	 * Writes on image
 	 *
-	 * @param integer $x X-coordinate
+	 * @param integer $x X-coordinate, string: 'center', 'left', 'right'
 	 * @param integer $y Y-coordinate
 	 * @param string $font Path to ttf
 	 * @param integer $size Font size
@@ -289,6 +289,28 @@ class Image {
 	 * @acces public
 	 */
 	function write($x, $y, $font, $size, $angle, $color, $text) {
+		
+		if (!is_numeric($x))
+		{
+			$text_coord = $this->getTextSize($font, $size, $angle, $text);
+			
+			switch($x)
+			{
+				case 'left':
+					$x = 0;
+				break;
+			
+				case 'right':
+					$x = $this->width - $text_coord['width'];
+				break;
+			
+				case 'center':
+					$x = round( ($this->width-$text_coord['width']) /2);
+				break;
+			}
+
+		}
+		
 		$rgb = $this->hex2rgb($color);
 		$color = imagecolorallocate($this->image, $rgb['r'], $rgb['g'], $rgb['b']);
 		imagettftext($this->image, $size, $angle, $x, $y, $color, $font, $text);
@@ -398,6 +420,43 @@ class Image {
 		}
 		
 		return true;
+	}
+	
+	
+	
+	/**
+	 * Get text size
+	 *
+	 * @param string $font Path to ttf
+	 * @param integer $size Font size
+	 * @param integer $angle in degree
+	 * @param string $text Text
+	 * @acces public
+	 */
+	public function getTextSize($font, $size, $angle, $text) {
+		
+		$tmp_image = imagecreatetruecolor($this->width, $this->height);
+		
+		$rgb = $this->hex2rgb('#FFFFFF');
+		$color = imagecolorallocate($tmp_image, $rgb['r'], $rgb['g'], $rgb['b']);
+		$_coords = imagettftext($tmp_image, $size, $angle, 0, 0, $color, $font, $text);
+
+		$coords['blx'] = $_coords[0];
+		$coords['bly'] = $_coords[1];
+		$coords['brx'] = $_coords[2];
+		$coords['bry'] = $_coords[3];
+		$coords['trx'] = $_coords[4];
+		$coords['try'] = $_coords[5];
+		$coords['tlx'] = $_coords[6];
+		$coords['tly'] = $_coords[7];
+		
+		$coords['width'] = $coords['trx'] - $coords['tlx'];
+		$coords['height'] = $coords['bly'] - $coords['tly'];
+		
+		imagedestroy($tmp_image);
+		unset($tmp_image);
+		
+		return $coords;
 	}
 }
 ?>
