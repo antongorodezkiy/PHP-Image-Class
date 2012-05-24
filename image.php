@@ -435,11 +435,7 @@ class Image {
 	 */
 	public function getTextSize($font, $size, $angle, $text) {
 		
-		$tmp_image = imagecreatetruecolor($this->width, $this->height);
-		
-		$rgb = $this->hex2rgb('#FFFFFF');
-		$color = imagecolorallocate($tmp_image, $rgb['r'], $rgb['g'], $rgb['b']);
-		$_coords = imagettftext($tmp_image, $size, $angle, 0, 0, $color, $font, $text);
+		$_coords = imagettfbbox($size, $angle, $font, $text);
 
 		$coords['blx'] = $_coords[0];
 		$coords['bly'] = $_coords[1];
@@ -452,10 +448,7 @@ class Image {
 		
 		$coords['width'] = $coords['trx'] - $coords['tlx'];
 		$coords['height'] = $coords['bly'] - $coords['tly'];
-		
-		imagedestroy($tmp_image);
-		unset($tmp_image);
-		
+
 		return $coords;
 	}
 }
