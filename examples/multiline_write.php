@@ -19,6 +19,7 @@
                 'color' => '#FFFFFF',
                 'lineSpacing' => null,  // if not definedm then will be startFontSize/10
                 'padding' => '20 10',   // almost in css format :), acceptable two or one parameters
+                'text-align' => 'center'// center, left, right
         );
         $box_config = array(
 			'top' => 300,
