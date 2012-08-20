@@ -48,7 +48,11 @@ class Image {
 	 * @return array image infos
 	 * @acces public
 	 */
-	function getInfos() {
+	function getInfos($key = false) {
+		
+		if ($key && isset($this->{$key}))
+			return $this->{$key};
+		else
 		return array(
 			'width' => $this->width,
 			'height' => $this->height,
@@ -128,6 +132,7 @@ class Image {
 		return true;
 	}
 
+
 	/**
 	 * Creates image resource with background
 	 *
@@ -188,6 +193,36 @@ class Image {
 		return true;
 	}
 
+	
+	/**
+	 * Resizes the image
+	 *
+	 * @param integer $width New width
+	 * @param integer $height New height
+	 * @return boolean true if image was resized
+	 * @acces public
+	 */
+	function resizeToMax($max_width, $max_height) {
+		
+		$current_width = $this->width;
+		$current_height = $this->height;		
+
+		if($current_width > $max_width or $current_height > $max_height)
+		{
+			while($current_width > $max_width or $current_height > $max_height)
+			{
+				$current_width--;
+				$current_height -= $current_height/$current_width;
+			}
+
+			return $this->resize($current_width,floor($current_height));
+		}
+		else
+			return true;
+
+	}
+	
+	
 	/**
 	 * Crops a part of the image
 	 *
@@ -316,6 +351,9 @@ class Image {
 		return imagettftext($this->image, $size, $angle, $new_x, $y, $color, $font, $text);
 	}
 	
+	
+	
+	
 
 	/**
 	 * Merges image with another
@@ -423,6 +461,22 @@ class Image {
 		return true;
 	}
 	
+
+	/**
+	 * Saves image temporary
+	 *
+	 * @return boolean true if image was saved
+	 * @acces public
+	 */
+	function saveTemporary() {
+		
+		$new_path = tempnam(null,'');
+		
+		if (imagepng($this->image, $new_path))
+			return $new_path;
+		else
+			return false;
+	}	
 	
 	
 	/**
@@ -452,6 +506,7 @@ class Image {
 
 		return $coords;
 	}
+	
 	
 	
 	
@@ -511,11 +566,11 @@ class Image {
 			{
 				$config['lineSpacing'] = ceil($config['startFontSize']/10);
 			}
-		
+	
 		// box width with padding
 			$boxWidth = !is_null($boxConfig['width']) ? $boxConfig['width'] : $this->width;
 			$boxWidth = $boxConfig['width'] - $padding['left_right']*2;
-			
+	
 		// box height with padding
 			$boxHeight = !is_null($boxConfig['height']) ? $boxConfig['height'] : $this->height;
 			$boxHeight = $boxConfig['height'] - $padding['top_bottom']*2;
@@ -529,7 +584,8 @@ class Image {
 			$i = 0;
 			$line_length = 0;
 			$lines_height = 0;
-			foreach($words as $word)
+
+			foreach($words as $k => $word)
 			{
 				if (!isset($lines[$i]['string']))
 				{
@@ -541,54 +597,81 @@ class Image {
 				
 				$word = $word.' ';
 				
-				$inf = $this->getTextSize($config['font'], $config['startFontSize'], $config['angle'], $lines[$i]['string'].$word);
-				
-				if ($inf['width'] > $boxWidth)
+				$previous = $this->getTextSize($config['font'], $config['startFontSize'], $config['angle'], $lines[$i]['string']);
+				$current = $this->getTextSize($config['font'], $config['startFontSize'], $config['angle'], $word);
+
+				if ($previous['width'] + $current['width'] > $boxWidth)
 				{
 					$lines[$i]['fontSize'] = $config['startFontSize'];
-					$lines[$i]['width'] = $inf['width'];
-					$lines[$i]['height'] = $inf['height'];
-					
-					$lines_height += $inf['height'] + $config['lineSpacing'];
+					$lines[$i]['width'] = $previous['width'];
+					$lines[$i]['height'] = $previous['height'];
+
 					$i++;
-				}
-				
 					
-				if (!isset($lines[$i]['string']))
+					// new line
+						$lines[$i]['string'] = $word;
+						$lines[$i]['fontSize'] = $config['startFontSize'];
+						$lines[$i]['words'] = array(trim($word));
+						$lines[$i]['width'] = $current['width'];
+						$lines[$i]['height'] = $current['height'];
+					
+				}
+				else
 				{
-					$lines[$i]['string'] = '';
-					$lines[$i]['words'] = array();
-					$lines[$i]['width'] = 0;
-					$lines[$i]['height'] = 0;
+					$lines[$i]['words'][] = trim($word);
+					$lines[$i]['string'] .= $word;
 				}
-					
-				$lines[$i]['words'][] = $word;
 				
-				$lines[$i]['string'] .= $word;
 			}
-			
-			$lines[$i]['fontSize'] = $config['startFontSize'];
-			$lines[$i]['width'] = $inf['width'];
-			$lines[$i]['height'] = $inf['height'];
-			
-			// decreasing font size
-			if ($lines_height > $boxHeight)
-			{
-				$config['startFontSize'] -= $config['stepFontSize'];
-				continue;
-			}
-			else
-				break;
+
+			// check height of lines
+				$lines_height = ($config['startFontSize'] + $config['lineSpacing']) * ($i+1);
+				if ($lines_height > $boxHeight)
+				{
+					// decreasing font size
+					$config['startFontSize'] -= $config['stepFontSize'];
+					continue;
+				}
+				else
+				{
+					// chack width bounds
+					$widthToLarge = false;
+					foreach($lines as $line)
+					{
+						if ($line['width'] > $boxWidth)
+						{
+							$config['startFontSize'] -= $config['stepFontSize'];
+							$widthToLarge = true;
+						}
+					}
+					
+					if ($widthToLarge)
+					{
+						// decreasing font size
+						$config['startFontSize'] -= $config['stepFontSize'];
+						continue;
+					}
+					else
+						break;
+				}
 
 		}
 		
 		// start real writing to image
-			$startY = $boxConfig['top'];
+			$startY = $boxConfig['top'] + $padding['top_bottom'] + $config['startFontSize'];
+			
+			if ($boxHeight > $lines_height)
+				$startY += (abs($boxHeight-$lines_height)/2);
+				
+
 			foreach($lines as $line)
 			{
 				$this->write($boxConfig['left'], $startY, $config['font'], $line['fontSize'], $config['angle'], $config['color'], $line['string'], $config['text-align'], $boxWidth, $boxHeight);
 				$startY += $line['height'];
 			}
 	}
+	
+	
+	
 }
 ?>
