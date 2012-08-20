@@ -1,3 +1,31 @@
 PHP-Image-Class
 
 To learn how to use this class, read examples/index.html or http://ushi.wurstcase.net/examples/image-class/
+
+Extended class contains function to write multiline text of dynamic width and count of words.
+Class will automatically adjust font size and word wrap to fit the box parameters.
+
+Example of writing multiline text:
+
+      // Text settings
+  		$config = array(
+				'font' => APPPATH.'../themes/admin/css/fonts/bitter/bitter-bold-webfont.ttf',
+				'startFontSize' => 150, 
+				'stepFontSize' => 1, // value on which font will decreasing each time
+				'angle' => null,
+				'color' => '#2158A6', // text color
+				'lineSpacing' => null, // if null then will be used default
+				'padding' => '10',
+				'text-align' => 'center' // allowed values: left, right, center
+			);
+
+      // Box settings
+			$box_config = array(
+				'top' => 10,
+				'left' => 10,
+				'width' => $this->image->getInfos('width'),
+				'height' => 240
+			);
+
+      // the work
+			$this->image->writeMultiline('Some large text of dynamic width', $box_config, $config);
